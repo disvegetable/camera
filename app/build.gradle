@@ -1,0 +1,73 @@
+plugins {
+    alias(libs.plugins.android.application)
+}
+
+android {
+    namespace 'com.example.opencv_app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.example.opencv_app"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        externalNativeBuild {
+            cmake {
+                arguments "-DANDROID_STL=c++_shared"
+            }
+        }
+        ndk{
+            abiFilters "x86","x86_64","arm64-v8a"
+        }
+    }
+
+    buildTypes {
+        debug {
+            packagingOptions {
+                doNotStrip '**/*.so'  // controlled by OpenCV CMake scripts
+            }
+        }
+        release {
+            packagingOptions {
+                doNotStrip '**/*.so'  // controlled by OpenCV CMake scripts
+            }
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    externalNativeBuild {
+        cmake {
+            path file('src/main/cpp/CMakeLists.txt')
+            version '3.22.1'
+        }
+    }
+    buildFeatures {
+        viewBinding true
+    }
+    sourceSets{
+        main{
+            jniLibs.srcDirs=['src/main/cpp/jniLibs']
+        }
+    }
+
+}
+
+
+dependencies {
+
+    implementation libs.appcompat
+    implementation libs.material
+    implementation libs.constraintlayout
+    implementation project(':opencv')
+    testImplementation libs.junit
+    androidTestImplementation libs.ext.junit
+    androidTestImplementation libs.espresso.core
+}
