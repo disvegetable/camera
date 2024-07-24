@@ -13,11 +13,11 @@
         "abis": [
           {
             "abiName": "arm64-v8a",
-            "abiApi": 21,
+            "abiApi": 24,
             "abiNdkMajor": 26,
             "abiStl": "c++_shared",
-            "abiLibrary": "/home/cr/opencv_app/opencv/.cxx/Debug/3ax3e4x6/arm64-v8a/libopencv_jni_shared.a",
-            "abiAndroidGradleBuildJsonFile": "/home/cr/opencv_app/opencv/.cxx/Debug/3ax3e4x6/arm64-v8a/android_gradle_build.json"
+            "abiLibrary": "/home/cr/opencv_app/opencv/.cxx/Debug/18596c3b/arm64-v8a/libopencv_jni_shared.a",
+            "abiAndroidGradleBuildJsonFile": "/home/cr/opencv_app/opencv/.cxx/Debug/18596c3b/arm64-v8a/android_gradle_build.json"
           }
         ]
       }

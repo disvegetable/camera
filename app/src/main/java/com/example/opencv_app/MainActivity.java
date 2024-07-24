@@ -2,8 +2,8 @@ package com.example.opencv_app;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
-import android.hardware.Sensor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -15,11 +15,10 @@ import android.os.StrictMode;
 import android.provider.Settings;
 import android.view.SurfaceView;
 import android.view.WindowManager;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.hardware.usb.UsbManager;
 import androidx.annotation.NonNull;
+import org.pytorch.Tensor;
 
 import org.opencv.android.CameraActivity;
 import org.opencv.android.CameraBridgeViewBase;
@@ -35,6 +34,11 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
+import com.chaquo.python.Python;
+import com.chaquo.python.android.AndroidPlatform;
+import com.chaquo.python.Kwarg;
+import com.chaquo.python.PyObject;
+import com.chaquo.python.PyException;
 
 
 public class MainActivity extends CameraActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
@@ -51,8 +55,6 @@ public class MainActivity extends CameraActivity implements CameraBridgeViewBase
     File mDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), Dirname);
 
     Mat mPicture;//cache for picture
-
-    Button mButton;
 
     int numPictures=0;//count the number of pictures
 
@@ -85,18 +87,30 @@ public class MainActivity extends CameraActivity implements CameraBridgeViewBase
         }
         setContentView(R.layout.activity_main);
 
+        //camera view
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         mOpencvCamera = (CameraBridgeViewBase) findViewById(R.id.View);
         mOpencvCamera.setVisibility(SurfaceView.VISIBLE);
         mOpencvCamera.setCvCameraViewListener(this);
         mOpencvCamera.setCameraIndex(0);
 
+        //send file
         StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder().detectFileUriExposure().build());
 
         //checkPermission
         checkPermission(this);
         //make directory for pictures
         makeDir();
+
+        //use python
+        if(!Python.isStarted()){
+            Python.start(new AndroidPlatform(this));
+        }
+        Python python=Python.getInstance();
+        PyObject pyObject=python.getModule("1");
+        PyObject res=pyObject.callAttr("say_hello");
+        AlertDialog alertDialog=new AlertDialog.Builder(this).setTitle("tips").setMessage(""+res).create();
+        alertDialog.show();
    }
 
     @Override

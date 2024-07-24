@@ -1,19 +1,31 @@
 [versions]
 agp = "8.4.1"
+androidxAppcompat = "1.7.0"
+appcompatV7Version = "28.0.0"
+appcompatVersion = "1.1.0"
 junit = "4.13.2"
 junitVersion = "1.1.5"
 espressoCore = "3.5.1"
 appcompat = "1.6.1"
 material = "1.10.0"
 constraintlayout = "2.1.4"
+materialVersion = "1.12.0"
+pytorch_android_lite = "1.9.0"
 
 [libraries]
+appcompat-v110 = { module = "androidx.appcompat:appcompat", version.ref = "appcompatVersion" }
+appcompat-v170 = { module = "androidx.appcompat:appcompat", version.ref = "androidxAppcompat" }
+com-android-support-support-vector-drawable5 = { module = "com.android.support:support-vector-drawable", version.ref = "appcompatV7Version" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+material-v1120 = { module = "com.google.android.material:material", version.ref = "materialVersion" }
+pytorch_android_lite = { module = "org.pytorch:pytorch_android_lite", version.ref = "pytorch_android_lite" }
+pytorch_android_torchvision = { module = "org.pytorch:pytorch_android_torchvision", version.ref = "pytorch_android_lite" }
+support-appcompat-v7 = { module = "com.android.support:appcompat-v7", version.ref = "appcompatV7Version" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
