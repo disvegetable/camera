@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">opencv_app</string>
-    <string name="Button">take_picture</string>
-    <string name="Counter">sum_of_pictures:</string>
+    <string name="Counter">sum of pictures:</string>
+    <string name="text">text</string>
+    <string name="usbDevice">USB Status: </string>
 </resources>

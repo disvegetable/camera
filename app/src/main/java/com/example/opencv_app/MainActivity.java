@@ -3,7 +3,11 @@ package com.example.opencv_app;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.hardware.usb.UsbManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -18,6 +22,8 @@ import android.view.WindowManager;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+
 import org.pytorch.Tensor;
 
 import org.opencv.android.CameraActivity;
@@ -34,12 +40,8 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
-import com.chaquo.python.Python;
-import com.chaquo.python.android.AndroidPlatform;
-import com.chaquo.python.Kwarg;
-import com.chaquo.python.PyObject;
-import com.chaquo.python.PyException;
 
+import com.example.opencv_app.Torch_JSON;
 
 public class MainActivity extends CameraActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
 
@@ -47,7 +49,6 @@ public class MainActivity extends CameraActivity implements CameraBridgeViewBase
     static {
         System.loadLibrary("opencv_app");
     }
-
     private CameraBridgeViewBase mOpencvCamera;
 
     private final String Dirname = "OpenCV_photo";
@@ -57,6 +58,12 @@ public class MainActivity extends CameraActivity implements CameraBridgeViewBase
     Mat mPicture;//cache for picture
 
     int numPictures=0;//count the number of pictures
+
+    UsbHelper mUsbHelper=new UsbHelper();
+
+    UsbManager mUsbManager;
+
+    PendingIntent mPendingIntent;
 
     //handler for capture
     Handler mHandler=new Handler(Looper.getMainLooper()){
@@ -79,6 +86,7 @@ public class MainActivity extends CameraActivity implements CameraBridgeViewBase
         }
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     @Override
     protected void onCreate(Bundle saveInstance) {
         super.onCreate(saveInstance);
@@ -103,14 +111,16 @@ public class MainActivity extends CameraActivity implements CameraBridgeViewBase
         makeDir();
 
         //use python
-        if(!Python.isStarted()){
-            Python.start(new AndroidPlatform(this));
-        }
-        Python python=Python.getInstance();
-        PyObject pyObject=python.getModule("1");
-        PyObject res=pyObject.callAttr("say_hello");
-        AlertDialog alertDialog=new AlertDialog.Builder(this).setTitle("tips").setMessage(""+res).create();
+        Torch_JSON torchJson=new Torch_JSON();
+        String res=torchJson.pythonToJava(this);
+        AlertDialog alertDialog=new AlertDialog.Builder(this).setTitle("tips").setMessage(res).create();
         alertDialog.show();
+
+        //use usb by broadcast
+        mUsbManager=(UsbManager) getSystemService(USB_SERVICE);
+        mPendingIntent=PendingIntent.getBroadcast(this,0,new Intent(Constant.USB_ACTION), PendingIntent.FLAG_IMMUTABLE);
+        IntentFilter filter=new IntentFilter(Constant.USB_ACTION);
+        registerReceiver(mUsbHelper.usbReceiver,filter, Context.RECEIVER_NOT_EXPORTED);
    }
 
     @Override
@@ -118,6 +128,21 @@ public class MainActivity extends CameraActivity implements CameraBridgeViewBase
         super.onStart();
         if (this.mOpencvCamera != null) {
             this.mOpencvCamera.enableView();
+        }
+    }
+
+    @Override
+    public void onResume(){
+        super.onResume();
+        if(mUsbHelper.connected){
+            TextView textView=(TextView) findViewById(R.id.usbDevice);
+            String temp="USB Status: connected";
+            textView.setText(temp);
+        }
+        else{
+            TextView textView=(TextView) findViewById(R.id.usbDevice);
+            String temp="USB Status: no device";
+            textView.setText(temp);
         }
     }
 
@@ -143,6 +168,7 @@ public class MainActivity extends CameraActivity implements CameraBridgeViewBase
         if (this.mOpencvCamera != null) {
             this.mOpencvCamera.disableView();
         }
+        unregisterReceiver(mUsbHelper.usbReceiver);
     }
 
     @Override
@@ -194,6 +220,6 @@ public class MainActivity extends CameraActivity implements CameraBridgeViewBase
     @SuppressLint("SetTextI18n")
     public void showNumberOfPictures(){
         TextView textView=(TextView) findViewById(R.id.counter);
-        textView.setText("sum_of_pictures:"+String.valueOf(numPictures));
+        textView.setText("sum of pictures:"+String.valueOf(numPictures));
     }
 }

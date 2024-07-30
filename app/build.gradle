@@ -82,7 +82,6 @@ chaquopy {
 }
 
 dependencies {
-
     implementation libs.material.v1120
     implementation libs.constraintlayout
     implementation project(':opencv')
@@ -92,4 +91,6 @@ dependencies {
     implementation libs.appcompat.v170
     implementation libs.pytorch.android.lite
     implementation libs.pytorch.android.torchvision
+    implementation libs.gson
+    implementation 'com.github.mik3y:usb-serial-for-android:3.8.0'
 }

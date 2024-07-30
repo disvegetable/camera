@@ -21,7 +21,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:layout_gravity="bottom"
         android:background="@color/cardview_light_background">
         <TextView
@@ -31,6 +31,16 @@
             android:text="@string/Counter"
             android:textSize="20sp"
             android:layout_margin="10dp"
+            android:textColor="@color/black"
             />
+       <TextView
+           android:id="@+id/usbDevice"
+           android:layout_width="wrap_content"
+           android:layout_height="wrap_content"
+           android:text="@string/usbDevice"
+           android:textSize="20sp"
+           android:layout_margin="10dp"
+           android:textColor="@color/black"
+           />
     </LinearLayout>
 </FrameLayout>
