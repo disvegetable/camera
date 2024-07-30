@@ -19,6 +19,7 @@ public class UsbHelper {
         public void onReceive(Context context, Intent intent) {
             String action=intent.getAction();
             if(Constant.USB_ACTION.equals(action)){
+                connected=true;
                 UsbDevice usbDevice=intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
                 if(intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED,false)){
                     //connect to usb and send message

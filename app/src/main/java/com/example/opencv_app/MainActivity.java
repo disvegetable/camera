@@ -134,16 +134,17 @@ public class MainActivity extends CameraActivity implements CameraBridgeViewBase
     @Override
     public void onResume(){
         super.onResume();
+        TextView textView;
+        String temp;
         if(mUsbHelper.connected){
-            TextView textView=(TextView) findViewById(R.id.usbDevice);
-            String temp="USB Status: connected";
-            textView.setText(temp);
+            textView = (TextView) findViewById(R.id.usbDevice);
+            temp = "USB Status: connected";
         }
         else{
-            TextView textView=(TextView) findViewById(R.id.usbDevice);
-            String temp="USB Status: no device";
-            textView.setText(temp);
+            textView = (TextView) findViewById(R.id.usbDevice);
+            temp = "USB Status: no device";
         }
+        textView.setText(temp);
     }
 
     @Override
@@ -199,6 +200,13 @@ public class MainActivity extends CameraActivity implements CameraBridgeViewBase
         String path=mDir.getPath()+"/"+filename+".png";
         Imgcodecs.imwrite(path,target);
         numPictures= Objects.requireNonNull(this.mDir.list()).length;
+        if(numPictures>=20){
+            for(String fineName: Objects.requireNonNull(mDir.list())){
+                File file=new File(mDir,fineName);
+                file.delete();
+            }
+            numPictures=0;
+        }
         Message message=new Message();
         message.what=1;
         //send message to main thread for UI
