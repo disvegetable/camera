@@ -3,10 +3,11 @@ package com.example.opencv_app;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Bitmap;
 import android.hardware.usb.UsbManager;
 import android.net.Uri;
 import android.os.Build;
@@ -24,17 +25,16 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 
-import org.pytorch.Tensor;
+import org.opencv.android.Utils;
 
 import org.opencv.android.CameraActivity;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
-import org.opencv.imgcodecs.Imgcodecs;
-import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.Date;
@@ -55,23 +55,72 @@ public class MainActivity extends CameraActivity implements CameraBridgeViewBase
 
     File mDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), Dirname);
 
+    File mFile;
+
     Mat mPicture;//cache for picture
 
     int numPictures=0;//count the number of pictures
 
-    UsbHelper mUsbHelper=new UsbHelper();
-
     UsbManager mUsbManager;
 
-    PendingIntent mPendingIntent;
+    Bitmap mBitmap;
+
+    //thread for create files of picture
+    Thread createPictureFilethread=new Thread(){
+        @Override
+        public void run(){
+            try {
+                Thread.sleep(500);
+            }catch (InterruptedException i){
+                i.printStackTrace();
+            }
+            while(true){
+                try {
+                    Thread.sleep(700);
+                    Message message=new Message();
+                    message.what=Constant.MESSAGE_TO_CREATE_PICTURE_FILE;
+                    CreatePictureFileHandle.sendMessage(message);
+                }catch (InterruptedException i){
+                    i.printStackTrace();
+                }
+            }
+        }
+    };
 
     //handler for capture
-    Handler mHandler=new Handler(Looper.getMainLooper()){
+    Handler PictureNumHandler=new Handler(Looper.getMainLooper()){
         @Override
         public void handleMessage(@NonNull Message message){
             super.handleMessage(message);
-            if(message.what==1){
+            if(message.what==Constant.SHOW_PICTURE_NUMBER){
                 showNumberOfPictures();
+            }
+        }
+    };
+
+    //handler for create files of picture
+    Handler CreatePictureFileHandle=new Handler(Objects.requireNonNull(Looper.myLooper())){
+        @Override
+        public void handleMessage(@NonNull Message message){
+            super.handleMessage(message);
+            if(message.what==Constant.MESSAGE_TO_CREATE_PICTURE_FILE){
+                createFile();
+            }
+        }
+    };
+
+    //broadcastReceiver for usb
+    BroadcastReceiver USBReceiver=new BroadcastReceiver() {
+        @SuppressLint("SetTextI18n")
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if(Objects.equals(intent.getAction(), Constant.USB_ACTION)){
+                TextView textView=(TextView) findViewById(R.id.usbDevice);
+                textView.setText("USB Status: connected");
+            }
+            else{
+                TextView textView=(TextView) findViewById(R.id.usbDevice);
+                textView.setText("USB status: no device");
             }
         }
     };
@@ -86,6 +135,7 @@ public class MainActivity extends CameraActivity implements CameraBridgeViewBase
         }
     }
 
+    //life cycle
     @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     @Override
     protected void onCreate(Bundle saveInstance) {
@@ -118,9 +168,10 @@ public class MainActivity extends CameraActivity implements CameraBridgeViewBase
 
         //use usb by broadcast
         mUsbManager=(UsbManager) getSystemService(USB_SERVICE);
-        mPendingIntent=PendingIntent.getBroadcast(this,0,new Intent(Constant.USB_ACTION), PendingIntent.FLAG_IMMUTABLE);
-        IntentFilter filter=new IntentFilter(Constant.USB_ACTION);
-        registerReceiver(mUsbHelper.usbReceiver,filter, Context.RECEIVER_NOT_EXPORTED);
+        IntentFilter filter=new IntentFilter();
+        filter.addAction(Constant.USB_ACTION);
+        registerReceiver(USBReceiver,filter, Context.RECEIVER_NOT_EXPORTED);
+
    }
 
     @Override
@@ -129,22 +180,19 @@ public class MainActivity extends CameraActivity implements CameraBridgeViewBase
         if (this.mOpencvCamera != null) {
             this.mOpencvCamera.enableView();
         }
+        Intent intent=new Intent();
+        intent.setAction(Constant.USB_ACTION);
+        sendBroadcast(intent);
     }
 
     @Override
     public void onResume(){
         super.onResume();
-        TextView textView;
-        String temp;
-        if(mUsbHelper.connected){
-            textView = (TextView) findViewById(R.id.usbDevice);
-            temp = "USB Status: connected";
+        try{
+            createPictureFilethread.start();
+        }catch (IllegalThreadStateException i) {
+            i.printStackTrace();
         }
-        else{
-            textView = (TextView) findViewById(R.id.usbDevice);
-            temp = "USB Status: no device";
-        }
-        textView.setText(temp);
     }
 
     @Override
@@ -161,6 +209,7 @@ public class MainActivity extends CameraActivity implements CameraBridgeViewBase
         if (this.mOpencvCamera != null) {
             this.mOpencvCamera.disableView();
         }
+        this.createPictureFilethread.interrupt();
     }
 
     @Override
@@ -169,7 +218,7 @@ public class MainActivity extends CameraActivity implements CameraBridgeViewBase
         if (this.mOpencvCamera != null) {
             this.mOpencvCamera.disableView();
         }
-        unregisterReceiver(mUsbHelper.usbReceiver);
+        unregisterReceiver(this.USBReceiver);
     }
 
     @Override
@@ -186,32 +235,30 @@ public class MainActivity extends CameraActivity implements CameraBridgeViewBase
 
     @Override
     public void onCameraViewStopped() {
+        mPicture.release();
     }
 
     //handle the picture
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
         this.mPicture=inputFrame.rgba();
-        //Toast.makeText(this, "rgba", Toast.LENGTH_SHORT).show();
-        Mat target=new Mat(mPicture.width(),mPicture.height(),CvType.CV_8UC4);
-        Imgproc.cvtColor(mPicture,target,Imgproc.COLOR_RGB2BGR);
+        Mat tempPicture=mPicture;
         @SuppressLint("SimpleDateFormat") SimpleDateFormat sdf=new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
         String filename=sdf.format(new Date());
         String path=mDir.getPath()+"/"+filename+".png";
-        Imgcodecs.imwrite(path,target);
+        mFile=new File(path);
+        //change mat to bitmap
+        mBitmap = Bitmap.createBitmap(mPicture.width(),mPicture.height(),Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(tempPicture,mBitmap);
         numPictures= Objects.requireNonNull(this.mDir.list()).length;
         if(numPictures>=20){
-            for(String fineName: Objects.requireNonNull(mDir.list())){
-                File file=new File(mDir,fineName);
-                file.delete();
-            }
-            numPictures=0;
+           deleteAllPictures();
         }
         Message message=new Message();
-        message.what=1;
+        message.what=Constant.SHOW_PICTURE_NUMBER;
         //send message to main thread for UI
-        mHandler.sendMessage(message);
-        return this.mPicture;
+        PictureNumHandler.sendMessage(message);
+        return tempPicture;
     }
 
     //permissions
@@ -229,5 +276,28 @@ public class MainActivity extends CameraActivity implements CameraBridgeViewBase
     public void showNumberOfPictures(){
         TextView textView=(TextView) findViewById(R.id.counter);
         textView.setText("sum of pictures:"+String.valueOf(numPictures));
+    }
+
+    public void createFile(){
+        try(FileOutputStream fileOutputStream=new FileOutputStream(mFile)){
+            mBitmap.compress(Bitmap.CompressFormat.PNG,100,fileOutputStream);
+            fileOutputStream.flush();
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    public void deleteAllPictures(){
+        String[] tempList= mDir.list();
+        for(String fineName: Objects.requireNonNull(tempList)){
+            File file=new File(mDir,fineName);
+            file.delete();
+        }
+        numPictures=0;
+    }
+
+    //TODO:use usb to send message
+    public void send(){
+
     }
 }
