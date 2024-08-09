@@ -2,5 +2,5 @@
     <string name="app_name">opencv_app</string>
     <string name="Counter">sum of pictures:</string>
     <string name="text">text</string>
-    <string name="usbDevice">USB Status: </string>
+    <string name="BlueTooth">Open BlueTooth</string>
 </resources>

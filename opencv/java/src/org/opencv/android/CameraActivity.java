@@ -1,13 +1,18 @@
 package org.opencv.android;
 
+import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothGattCallback;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.util.AttributeSet;
 import android.view.View;
 
+import java.security.Permission;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,7 +31,7 @@ public class CameraActivity extends Activity {
         if (cameraViews == null) {
             return;
         }
-        for (CameraBridgeViewBase cameraBridgeViewBase: cameraViews) {
+        for (CameraBridgeViewBase cameraBridgeViewBase : cameraViews) {
             if (cameraBridgeViewBase != null) {
                 cameraBridgeViewBase.setCameraPermissionGranted();
             }
@@ -37,19 +42,22 @@ public class CameraActivity extends Activity {
     protected void onStart() {
         super.onStart();
         boolean havePermission = true;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (checkSelfPermission(CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{CAMERA}, CAMERA_PERMISSION_REQUEST_CODE);
-                havePermission = false;
-            }
+        List<String> permissions = new ArrayList<>();
+        if (checkSelfPermission(CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            permissions.add(CAMERA);
+            havePermission = false;
+        }
+        if (!permissions.isEmpty()) {
+            havePermission = false;
         }
         if (havePermission) {
             onCameraPermissionGranted();
+        } else {
+            requestPermissions(permissions.toArray(new String[permissions.size()]), CAMERA_PERMISSION_REQUEST_CODE);
         }
     }
 
     @Override
-    @TargetApi(Build.VERSION_CODES.M)
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         if (requestCode == CAMERA_PERMISSION_REQUEST_CODE && grantResults.length > 0
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
