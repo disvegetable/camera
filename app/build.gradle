@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId "com.example.opencv_app"
-        minSdk 24
+        minSdk 26
         targetSdk 34
         versionCode 1
         versionName "1.0"
@@ -21,10 +21,10 @@ android {
                 arguments "-DANDROID_STL=c++_shared"
             }
         }
-        ndk{
-            abiFilters "x86_64","arm64-v8a"
+        ndk {
+            abiFilters "x86_64", "arm64-v8a"
         }
-        python{
+        python {
             buildPython "/usr/bin/python"
         }
     }
@@ -56,9 +56,9 @@ android {
     buildFeatures {
         viewBinding true
     }
-    sourceSets{
-        main{
-            jniLibs.srcDirs=['src/main/cpp/jniLibs']
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['src/main/cpp/jniLibs']
         }
     }
     buildToolsVersion '34.0.0'
@@ -67,14 +67,14 @@ android {
 }
 
 chaquopy {
-    sourceSets{
-        getByName("main"){
+    sourceSets {
+        getByName("main") {
             srcDir("src/main/python")
         }
     }
-    defaultConfig{
+    defaultConfig {
         version("3.12")
-        pip{
+        pip {
             install("numpy")
             install("pillow")
         }
@@ -82,6 +82,16 @@ chaquopy {
 }
 
 dependencies {
+
+    def camerax_version = "1.1.0-beta01"
+    implementation "androidx.camera:camera-core:${camerax_version}"
+    implementation "androidx.camera:camera-camera2:${camerax_version}"
+    implementation "androidx.camera:camera-lifecycle:${camerax_version}"
+    implementation "androidx.camera:camera-video:${camerax_version}"
+
+    implementation "androidx.camera:camera-view:${camerax_version}"
+    implementation "androidx.camera:camera-extensions:${camerax_version}"
+
     implementation libs.material.v1120
     implementation libs.constraintlayout
     implementation project(':opencv')
@@ -92,5 +102,4 @@ dependencies {
     implementation libs.pytorch.android.lite
     implementation libs.pytorch.android.torchvision
     implementation libs.gson
-    implementation 'com.github.mik3y:usb-serial-for-android:3.8.0'
 }
