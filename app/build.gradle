@@ -1,6 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
-    id("com.chaquo.python")
+    //id("com.chaquo.python")
 }
 
 android {
@@ -22,11 +22,11 @@ android {
             }
         }
         ndk {
-            abiFilters "x86_64", "arm64-v8a"
+            abiFilters "arm64-v8a", "x86", "x86_64"
         }
-        python {
-            buildPython "/usr/bin/python"
-        }
+//        python {
+//            buildPython "/usr/bin/python"
+//        }
     }
 
     buildTypes {
@@ -65,21 +65,21 @@ android {
     ndkVersion '27.0.12077973'
 
 }
-
-chaquopy {
-    sourceSets {
-        getByName("main") {
-            srcDir("src/main/python")
-        }
-    }
-    defaultConfig {
-        version("3.12")
-        pip {
-            install("numpy")
-            install("pillow")
-        }
-    }
-}
+//
+//chaquopy {
+//    sourceSets {
+//        getByName("main") {
+//            srcDir("src/main/python")
+//        }
+//    }
+//    defaultConfig {
+//        version("3.12")
+//        pip {
+//            install("numpy")
+//            install("pillow")
+//        }
+//    }
+//}
 
 dependencies {
 
@@ -91,7 +91,10 @@ dependencies {
 
     implementation "androidx.camera:camera-view:${camerax_version}"
     implementation "androidx.camera:camera-extensions:${camerax_version}"
+    implementation("org.tensorflow:tensorflow-lite:2.14.0")
+    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
 
+    implementation 'com.licheedev:android-serialport:2.1.5'
     implementation libs.material.v1120
     implementation libs.constraintlayout
     implementation project(':opencv')

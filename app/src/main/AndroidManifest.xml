@@ -26,20 +26,15 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:screenOrientation="portrait"
+            android:screenOrientation="landscape"
             android:configChanges="screenSize|screenLayout|keyboard|keyboardHidden"
             tools:ignore="DiscouragedApi,ExtraText">
             <intent-filter>
-                <!--                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />-->
+                <!--<action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />-->
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <activity
-            android:name=".usbPermissionActivity"
-            android:parentActivityName=".MainActivity_bak"
-            android:exported="true" />
     </application>
 
 </manifest>

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">opencv_app</string>
+    <string name="app_name">cube</string>
     <string name="Counter">sum of pictures:</string>
     <string name="text">text</string>
     <string name="BlueTooth">Open BlueTooth</string>

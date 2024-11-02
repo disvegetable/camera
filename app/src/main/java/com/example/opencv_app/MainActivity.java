@@ -3,50 +3,62 @@ package com.example.opencv_app;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.hardware.usb.UsbConstants;
-import android.hardware.usb.UsbDevice;
-import android.hardware.usb.UsbDeviceConnection;
-import android.hardware.usb.UsbEndpoint;
-import android.hardware.usb.UsbInterface;
-import android.hardware.usb.UsbManager;
+import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.graphics.Matrix;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
 import android.provider.Settings;
+import android.util.Log;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.OptIn;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.CameraSelector;
-import androidx.camera.core.ImageCapture;
+import androidx.camera.core.ExperimentalGetImage;
+import androidx.camera.core.ImageAnalysis;
+import androidx.camera.core.ImageProxy;
 import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
-import androidx.camera.video.Recording;
 import androidx.camera.view.PreviewView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.util.Arrays;
-import java.util.HashMap;
+import org.opencv.android.Utils;
+import org.opencv.core.Core;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfPoint;
+import org.opencv.core.Point;
+import org.opencv.core.Scalar;
+import org.opencv.imgproc.Imgproc;
+import org.opencv.imgproc.Moments;
+
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
+
+    static {
+        System.loadLibrary("opencv_app");
+    }
 
     //permission array
     private final String[] allPermissions = new String[]{
@@ -57,107 +69,179 @@ public class MainActivity extends AppCompatActivity {
     //request code
     private final int REQUEST_CODE = 100;
 
-    ImageCapture imageCapture = null;
-
-    Recording recording = null;
-
     ExecutorService cameraExecutor;
 
-    UsbManager mUsbManager;
+    String[][] Status = new String[6][3];
 
-    UsbDevice mUsbDevice;
+    MyCube cube = new MyCube();
 
-    UsbDeviceConnection mConnection;
+    List<String> Label = new ArrayList<>();
 
-    UsbInterface mInterface;
-
-    UsbEndpoint EndpointIn;//endpoint for input
-
-    UsbEndpoint EndpointOut;//endpoint for output
-
-    int sentTimes = 0;//show times of sending message
-
-    int receiveTimes = 0;//show times of receiving message
-
-    boolean exit = false;//flag to stop the thread for sending message when detaching usb
-
-    //Thread for usb to send message
-    Thread sendThread = new Thread() {
+    private class layerCompartor implements Comparator<MatOfPoint> {
         @Override
-        public void run() {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException i) {
-                i.printStackTrace();
+        public int compare(MatOfPoint t1, MatOfPoint t2) {
+            Moments moments_1 = Imgproc.moments(t1);
+            Moments moments_2 = Imgproc.moments(t2);
+            int cY_1 = (int) (moments_1.m01 / moments_1.m00);
+            int cY_2 = (int) (moments_2.m01 / moments_2.m00);
+            return cY_1 - cY_2;
+        }
+    }
+
+    //ImageAnalyzer
+    private class mAnalyzer implements ImageAnalysis.Analyzer {
+
+        //rotate image
+        public void rotate(int rotation, Mat target) {
+            if (rotation == 90) {
+                Core.transpose(target, target);
+                Core.flip(target, target, 1);
             }
-            while (!exit) {
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException i) {
-                    i.printStackTrace();
+        }
+
+        @OptIn(markerClass = ExperimentalGetImage.class)
+        @Override
+        public void analyze(@NonNull ImageProxy image) {
+            int height = image.getHeight();
+            Log.d("yep", String.valueOf(height));
+
+            //change format of image from yuv to mat
+            int degrees = image.getImageInfo().getRotationDegrees();
+            YUVtoMat yuvtomat = new YUVtoMat(image.getImage());
+            Mat src = yuvtomat.rgba();//src mat
+            rotate(degrees, src);
+            Imgproc.cvtColor(src, src, Imgproc.COLOR_BGRA2BGR);
+
+            Mat gray = new Mat(src.width(), src.height(), CvType.CV_8UC1);
+
+            List<MatOfPoint> contours = new ArrayList<>();
+            Imgproc.cvtColor(src, gray, Imgproc.COLOR_BGR2GRAY);
+
+            Imgproc.medianBlur(gray, gray, 3);
+            Imgproc.adaptiveThreshold(gray, gray, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, 15, 5);
+
+
+            Mat hierachy = new Mat();
+            Imgproc.findContours(gray, contours, hierachy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
+
+            Bitmap bitmap = Bitmap.createBitmap(src.width(), src.height(), Bitmap.Config.ARGB_8888);
+            Iterator<MatOfPoint> iterator = contours.iterator();
+
+            //remove some points
+            while (iterator.hasNext()) {
+                MatOfPoint con = iterator.next();
+                int cX = getX(con);
+                int cY = getY(con);
+                if (Imgproc.contourArea(con) < 300 || Imgproc.contourArea(con) > 5000) {
+                    iterator.remove();
+                } else if (cX > 500 || cY < 30 || cX < 200 || cY > 400) {
+                    iterator.remove();
                 }
-                Message message = new Message();
-                message.what = Constant.SEND_MESSAGE;
-                sendHandler.sendMessage(message);
             }
-        }
-    };
+            if (contours.size() == 18) {
+                //make layer
+                contours.sort(new layerCompartor());
 
-    //send handler
-    Handler sendHandler = new Handler(Looper.getMainLooper()) {
-        @Override
-        public void handleMessage(@NonNull Message message) {
-            if (message.what == Constant.SEND_MESSAGE) {
-                sendByte();
-                receiveByte();
-            }
-        }
-    };
+                for (int i = 0; i < 6; i++) {
+                    int begin = i * 3;
+                    int end = begin + 2;
 
-    //broadcast for usb
-    private final BroadcastReceiver USBReceiver = new BroadcastReceiver() {
-        @SuppressLint("SetTextI18n")
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            //device attached
-            if (UsbManager.ACTION_USB_DEVICE_ATTACHED.equals(action)) {
-                if (!mUsbManager.getDeviceList().isEmpty()) {
-                    HashMap<String, UsbDevice> deviceList = mUsbManager.getDeviceList();
-                    Iterator<UsbDevice> iterator = deviceList.values().iterator();
-                    if (iterator.hasNext()) {
-                        mUsbDevice = iterator.next();
-                        //check usb permission
-                        if (!mUsbManager.hasPermission(mUsbDevice)) {
-                            Intent secondActivity = new Intent(getApplicationContext(), usbPermissionActivity.class);
-                            startActivity(secondActivity);
+                    for (int j = end; j > begin; j--) {
+                        for (int k = begin; k < j; k++) {
+                            if (getX(contours.get(k)) > getX(contours.get(k + 1))) {
+                                MatOfPoint temp = contours.get(k);
+                                contours.set(k, contours.get(k + 1));
+                                contours.set(k + 1, temp);
+                            }
                         }
-                        exit = false;
+                    }
+
+                }
+
+                //mark point
+                int index = 0;
+                for (MatOfPoint con : contours) {
+                    int cX = getX(con);
+                    int cY = getY(con);
+                    List<MatOfPoint> temp = new ArrayList<>();
+                    temp.add(con);
+                    double[] hsv = src.get(cY, cX) == null ? new double[0] : src.get(cY, cX);
+                    Color_Identify colorIdentify = new Color_Identify((int) hsv[0], (int) hsv[1], (int) hsv[2]);
+                    //update status
+                    Status[index / 3][index % 3] = colorIdentify.getColor();
+                    if (hsv.length > 0) {
+                        Imgproc.circle(src, new Point(cX, cY), 7, new Scalar((int) hsv[0], (int) hsv[1], (int) hsv[2]), -1);
+                    } else {
+                        Imgproc.circle(src, new Point(cX, cY), 7, new Scalar(0, 0, 0), -1);
+                    }
+                    Imgproc.putText(src, String.valueOf(index++), new Point(cX - 20, cY - 20),
+                            Imgproc.FONT_HERSHEY_SIMPLEX, 0.5, new Scalar(255, 255, 255), 2);
+
+                }
+            }
+            Utils.matToBitmap(src, bitmap);
+            yuvtomat.release();
+            image.close();
+
+            //preview on ui thread
+            runOnUiThread(new Runnable() {
+                @SuppressLint("SetTextI18n")
+                @Override
+                public void run() {
+                    ImageView imageView = (ImageView) findViewById(R.id.grayView);
+                    TextView textView1 = (TextView) findViewById(R.id.test);
+                    TextView textView2 = (TextView) findViewById(R.id.moving);
+                    textView1.setText(String.valueOf(contours.size()));
+                    if (contours.size() != 18) {
+                        textView2.setText("unstable");
+                    } else {
+                        textView2.setText("stable");
+                    }
+                    int h1 = imageView.getWidth();
+                    int h2 = bitmap.getWidth();
+                    float scale = h1 * 1.0f / h2;
+                    Matrix matrix = new Matrix();
+                    matrix.setScale(scale, scale);
+                    imageView.setImageBitmap(bitmap);
+                    imageView.setImageMatrix(matrix);
+
+                    //show color
+                    if (contours.size() == 18) {
+                        try {
+                            String moving = cube.resultMoving(Status);
+                            showColor();
+                            if (moving.equals("unstable")) {
+                                return;
+                            }
+                            Label.add(moving);
+                            int len = Label.size();
+                            if (len >= 2) {
+                                if (Label.get(len - 2).equals(Label.get(len - 1))) {
+                                    Label.remove((len - 1));
+                                    String temp = Label.get(len - 2);
+                                    Label.set(len - 2, temp + "2");
+                                }
+                            }
+                            TextView view = (TextView) findViewById(R.id.showMoving);
+                            view.setText(Label.toString());
+                        } catch (NoSuchFieldException | IllegalAccessException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
                 }
-            }
-            //device detached
-            if (UsbManager.ACTION_USB_DEVICE_DETACHED.equals(action)) {
-                Toast.makeText(getApplicationContext(), "detached", Toast.LENGTH_SHORT).show();
-                //release source
-                mConnection.releaseInterface(mInterface);
-                mConnection.close();
-                //stop the thread
-                exit = true;
-                //no device
-                TextView textView = (TextView) findViewById(R.id.usbStatus);
-                textView.setText(Constant.USB_STATUS + "disconnected");
-                textView = (TextView) findViewById(R.id.usbDevice);
-                textView.setText(Constant.USB_DEVICE + "no device");
-            }
+            });
         }
-    };
+    }
+
 
     @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
     @Override
     protected void onCreate(Bundle saveInstance) {
         super.onCreate(saveInstance);
         setContentView(R.layout.main_layout);
+
+        Window window = getWindow();
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         //check permission
         checkStoragePermission(this);
@@ -166,59 +250,18 @@ public class MainActivity extends AppCompatActivity {
         } else {
             requestCameraPermissions();
         }
-
-        cameraExecutor = Executors.newSingleThreadExecutor();
-        
-        //usb service
-        mUsbManager = (UsbManager) getSystemService(USB_SERVICE);
-        IntentFilter intentFilter = new IntentFilter(Constant.ACTION_USB_PERMISSION);
-        intentFilter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
-        intentFilter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
-        intentFilter.addAction(Constant.ACTION_USB_SEND_MESSAGE);
-        registerReceiver(USBReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED);
-        if (!mUsbManager.getDeviceList().isEmpty()) {
-            HashMap<String, UsbDevice> deviceList = mUsbManager.getDeviceList();
-            Iterator<UsbDevice> iterator = deviceList.values().iterator();
-            if (iterator.hasNext()) {
-                mUsbDevice = iterator.next();
-                //check usb permission
-                if (!mUsbManager.hasPermission(mUsbDevice)) {
-                    Intent intent = new Intent(this, usbPermissionActivity.class);
-                    startActivity(intent);
-                }
-            }
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().hide();
         }
+        //create a thread for camera
+        cameraExecutor = Executors.newSingleThreadExecutor();
+
     }
 
     @SuppressLint("SetTextI18n")
     @Override
     public void onResume() {
         super.onResume();
-        HashMap<String, UsbDevice> deviceList = mUsbManager.getDeviceList();
-        Iterator<UsbDevice> iterator = deviceList.values().iterator();
-        if (iterator.hasNext()) {
-            mUsbDevice = iterator.next();
-            //show some information about device
-            if (mUsbManager.hasPermission(mUsbDevice)) {
-                TextView textView = (TextView) findViewById(R.id.usbDevice);
-                textView.setText(Constant.USB_DEVICE + mUsbDevice.getDeviceName() +
-                        "\n" + "Vendor ID: " + mUsbDevice.getVendorId() + " Product ID: " + mUsbDevice.getProductId());
-                connectDevice();
-            } else {
-                //no permission
-                TextView textView = (TextView) findViewById(R.id.usbStatus);
-                textView.setText(Constant.USB_STATUS + "No Permission");
-                textView = (TextView) findViewById(R.id.usbDevice);
-                textView.setText(Constant.USB_DEVICE + mUsbDevice.getDeviceName() +
-                        "\n" + "Vendor ID: " + mUsbDevice.getVendorId() + " Product ID: " + mUsbDevice.getProductId());
-            }
-        } else {
-            //no device
-            TextView textView = (TextView) findViewById(R.id.usbStatus);
-            textView.setText(Constant.USB_STATUS + "disconnected");
-            textView = (TextView) findViewById(R.id.usbDevice);
-            textView.setText(Constant.USB_DEVICE + "no device");
-        }
     }
 
     @Override
@@ -251,12 +294,15 @@ public class MainActivity extends AppCompatActivity {
                     Preview preview = new Preview.Builder().build();
                     preview.setSurfaceProvider(cameraPreview.getSurfaceProvider());
 
+                    //get ImageAnalyzer
+                    ImageAnalysis analyzer = new ImageAnalysis.Builder().build();
+                    analyzer.setAnalyzer(cameraExecutor, new mAnalyzer());
+
                     //get back camera
                     CameraSelector cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA;
-
                     //rebind camera
                     cameraProvider.unbindAll();
-                    cameraProvider.bindToLifecycle(MainActivity.this, cameraSelector, preview);
+                    cameraProvider.bindToLifecycle(MainActivity.this, cameraSelector, preview, analyzer);
                 } catch (ExecutionException | InterruptedException e) {
                     throw new RuntimeException(e);
                 }
@@ -294,60 +340,50 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    public int getX(MatOfPoint point) {
+        Moments moment = Imgproc.moments(point);
+        return (int) (moment.m10 / moment.m00);
+    }
 
-    //connect to device
-    @SuppressLint("SetTextI18n")
-    public void connectDevice() {
-        mConnection = mUsbManager.openDevice(mUsbDevice);
-        if (mConnection != null) {
-            TextView textView = (TextView) findViewById(R.id.usbStatus);
-            textView.setText(Constant.USB_STATUS + "connected");
-            //configure the endpoints
-            mInterface = mUsbDevice.getInterface(1);
-            int SumOfEndpoint = mInterface.getEndpointCount();
-            //make endpoint for sending or receiving message
-            for (int i = 0; i < SumOfEndpoint; i++) {
-                if (mInterface.getEndpoint(i).getType() == UsbConstants.USB_ENDPOINT_XFER_BULK) {
-                    if (mInterface.getEndpoint(i).getDirection() == UsbConstants.USB_DIR_IN) {
-                        EndpointIn = mInterface.getEndpoint(i);
-                    } else {
-                        EndpointOut = mInterface.getEndpoint(i);
-                    }
+    public int getY(MatOfPoint point) {
+        Moments moment = Imgproc.moments(point);
+        return (int) (moment.m01 / moment.m00);
+    }
+
+    //show color
+    void showColor() throws NoSuchFieldException, IllegalAccessException {
+        String[][] test = new String[6][3];
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++)
+                test[i][j] = cube.L[i][j];
+        }
+
+        for (int i = 3; i < 6; i++) {
+            for (int j = 0; j < 3; j++) {
+                test[i][j] = cube.R[i - 3][j];
+            }
+        }
+
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < 3; j++) {
+                String index = "row" + i + "col" + j;
+                int view_id = R.id.class.getField(index).getInt(null);
+                TextView temp = (TextView) findViewById(view_id);
+                String color = Status[i][j];
+                if (color.equals("r")) {
+                    temp.setTextColor(Color.RED);
+                } else if (color.equals("w")) {
+                    temp.setTextColor(Color.WHITE);
+                } else if (color.equals("b")) {
+                    temp.setTextColor(Color.BLUE);
+                } else if (color.equals("o")) {
+                    temp.setTextColor(Color.parseColor("#e87000"));
+                } else if (color.equals("g")) {
+                    temp.setTextColor(Color.GREEN);
+                } else {
+                    temp.setTextColor(Color.YELLOW);
                 }
             }
-            mConnection.claimInterface(mInterface, true);
-            //start the thread of sending message
-            sendThread.start();
-        } else {
-            TextView textView = (TextView) findViewById(R.id.usbStatus);
-            textView.setText(Constant.USB_STATUS + "disconnected");
-        }
-    }
-
-    @SuppressLint("SetTextI18n")
-    public void sendByte() {
-        String message = "hellosfskjsfasdfas";
-        byte[] mes = message.getBytes();
-        int result = mConnection.bulkTransfer(EndpointOut, mes, mes.length, 100);
-        TextView textView = (TextView) findViewById(R.id.usbSend);
-        sentTimes++;
-        if (result < 0) {
-            textView.setText("Send Status: failed" + sentTimes);
-        } else {
-            textView.setText("Send Status: successful" + sentTimes);
-        }
-    }
-
-    @SuppressLint("SetTextI18n")
-    public void receiveByte() {
-        byte[] mes = new byte[20];
-        int result = mConnection.bulkTransfer(EndpointIn, mes, mes.length, 200);
-        TextView textView = (TextView) findViewById(R.id.usbReceive);
-        receiveTimes++;
-        if (result < 0) {
-            textView.setText("Receive Status: failed" + receiveTimes);
-        } else {
-            textView.setText("Receive Status: successful" + Arrays.toString(mes) + receiveTimes);
         }
     }
 }

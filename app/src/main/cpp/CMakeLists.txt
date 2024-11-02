@@ -17,8 +17,9 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 add_library(libopencv_java4 SHARED IMPORTED)
 
 #set .so
-set_target_properties(libopencv_java4 PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/jniLibs/arm64-v8a/libopencv_java4.so)
-
+set_target_properties(libopencv_java4 PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/jniLibs//${ANDROID_ABI}/libopencv_java4.so)
+set(ncnn_DIR ${CMAKE_SOURCE_DIR}/include/ncnn-20240410-android-vulkan/${ANDROID_ABI}/lib/cmake/ncnn)
+find_package(ncnn REQUIRED)
 # Specifies libraries CMake should link to your target library. You
 # can link libraries from various origins, such as libraries defined in this
 # build script, prebuilt third-party libraries, or Android system libraries.
