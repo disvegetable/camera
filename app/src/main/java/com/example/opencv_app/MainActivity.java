@@ -14,8 +14,10 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
 import android.util.Log;
+import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -48,6 +50,7 @@ import org.opencv.imgproc.Moments;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -77,7 +80,17 @@ public class MainActivity extends AppCompatActivity {
 
     List<String> Label = new ArrayList<>();
 
-    private class layerCompartor implements Comparator<MatOfPoint> {
+    Button scrambleButton;
+
+    Button restoreButton;
+
+    boolean isRestoring = false;
+
+    long beginTime = 0;
+
+    long endTime = 0;
+
+    private class layerComparator implements Comparator<MatOfPoint> {
         @Override
         public int compare(MatOfPoint t1, MatOfPoint t2) {
             Moments moments_1 = Imgproc.moments(t1);
@@ -117,10 +130,11 @@ public class MainActivity extends AppCompatActivity {
             List<MatOfPoint> contours = new ArrayList<>();
             Imgproc.cvtColor(src, gray, Imgproc.COLOR_BGR2GRAY);
 
+            //use median blur
             Imgproc.medianBlur(gray, gray, 3);
             Imgproc.adaptiveThreshold(gray, gray, 255, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY, 15, 5);
 
-
+            //find center of blocks
             Mat hierachy = new Mat();
             Imgproc.findContours(gray, contours, hierachy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
 
@@ -138,10 +152,12 @@ public class MainActivity extends AppCompatActivity {
                     iterator.remove();
                 }
             }
+
             if (contours.size() == 18) {
                 //make layer
-                contours.sort(new layerCompartor());
+                contours.sort(new layerComparator());
 
+                //order points
                 for (int i = 0; i < 6; i++) {
                     int begin = i * 3;
                     int end = begin + 2;
@@ -163,8 +179,6 @@ public class MainActivity extends AppCompatActivity {
                 for (MatOfPoint con : contours) {
                     int cX = getX(con);
                     int cY = getY(con);
-                    List<MatOfPoint> temp = new ArrayList<>();
-                    temp.add(con);
                     double[] hsv = src.get(cY, cX) == null ? new double[0] : src.get(cY, cX);
                     Color_Identify colorIdentify = new Color_Identify((int) hsv[0], (int) hsv[1], (int) hsv[2]);
                     //update status
@@ -179,7 +193,10 @@ public class MainActivity extends AppCompatActivity {
 
                 }
             }
+
+            //change mat to bitmap
             Utils.matToBitmap(src, bitmap);
+            //release frame and source
             yuvtomat.release();
             image.close();
 
@@ -188,15 +205,8 @@ public class MainActivity extends AppCompatActivity {
                 @SuppressLint("SetTextI18n")
                 @Override
                 public void run() {
+                    //show image
                     ImageView imageView = (ImageView) findViewById(R.id.grayView);
-                    TextView textView1 = (TextView) findViewById(R.id.test);
-                    TextView textView2 = (TextView) findViewById(R.id.moving);
-                    textView1.setText(String.valueOf(contours.size()));
-                    if (contours.size() != 18) {
-                        textView2.setText("unstable");
-                    } else {
-                        textView2.setText("stable");
-                    }
                     int h1 = imageView.getWidth();
                     int h2 = bitmap.getWidth();
                     float scale = h1 * 1.0f / h2;
@@ -205,27 +215,37 @@ public class MainActivity extends AppCompatActivity {
                     imageView.setImageBitmap(bitmap);
                     imageView.setImageMatrix(matrix);
 
+                    //show status of cube
+                    if (isRestoring && !cube.isRestored()) {
+                        endTime = new Date().getTime();
+                        TextView timeView = (TextView) findViewById(R.id.showTime);
+                        timeView.setText(String.valueOf(toTime(endTime - beginTime)));
+                        TextView statusView = (TextView) findViewById(R.id.cubeStatus);
+                        statusView.setText("复原中...");
+                    } else if (cube.isRestored()) {
+                        TextView timeView = (TextView) findViewById(R.id.showTime);
+                        timeView.setText(String.valueOf(toTime(endTime - beginTime)));
+                        TextView statusView = (TextView) findViewById(R.id.cubeStatus);
+                        statusView.setText("已复原!!!");
+                    } else {
+                        endTime = beginTime;
+                        TextView timeView = (TextView) findViewById(R.id.showTime);
+                        timeView.setText(String.valueOf(toTime(endTime - beginTime)));
+                        TextView statusView = (TextView) findViewById(R.id.cubeStatus);
+                        statusView.setText("正在打乱...");
+                    }
                     //show color
                     if (contours.size() == 18) {
                         try {
                             String moving = cube.resultMoving(Status);
                             showColor();
+
                             if (moving.equals("unstable")) {
                                 return;
                             }
-                            Label.add(moving);
-                            int len = Label.size();
-                            if (len >= 2) {
-                                if (Label.get(len - 2).equals(Label.get(len - 1))) {
-                                    Label.remove((len - 1));
-                                    String temp = Label.get(len - 2);
-                                    Label.set(len - 2, temp + "2");
-                                }
-                            }
-                            TextView view = (TextView) findViewById(R.id.showMoving);
-                            view.setText(Label.toString());
                         } catch (NoSuchFieldException | IllegalAccessException e) {
                             throw new RuntimeException(e);
+
                         }
                     }
                 }
@@ -240,6 +260,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(saveInstance);
         setContentView(R.layout.main_layout);
 
+        //keep window on
         Window window = getWindow();
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
@@ -253,8 +274,37 @@ public class MainActivity extends AppCompatActivity {
         if (getSupportActionBar() != null) {
             getSupportActionBar().hide();
         }
+
         //create a thread for camera
         cameraExecutor = Executors.newSingleThreadExecutor();
+
+        scrambleButton = (Button) findViewById(R.id.beginScramble);
+        restoreButton = (Button) findViewById(R.id.beginRestore);
+
+        scrambleButton.setEnabled(true);
+        restoreButton.setEnabled(false);
+
+        //button for scrambling
+        scrambleButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                isRestoring = false;
+                scrambleButton.setEnabled(false);
+                restoreButton.setEnabled(true);
+            }
+        });
+
+        //button for restoring
+        restoreButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                isRestoring = true;
+                beginTime = new Date().getTime();
+                endTime = beginTime;
+                scrambleButton.setEnabled(true);
+                restoreButton.setEnabled(false);
+            }
+        });
 
     }
 
@@ -270,6 +320,7 @@ public class MainActivity extends AppCompatActivity {
         cameraExecutor.shutdown();
     }
 
+    //judge camera permissions
     private boolean allCameraPermissionsGranted() {
         boolean flag = true;
         for (String permission : allPermissions) {
@@ -322,10 +373,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    //request camera permission
     private void requestCameraPermissions() {
         ActivityCompat.requestPermissions(this, allPermissions, REQUEST_CODE);
     }
 
+    //request permission callback
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -340,11 +393,13 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    //get pixel x
     public int getX(MatOfPoint point) {
         Moments moment = Imgproc.moments(point);
         return (int) (moment.m10 / moment.m00);
     }
 
+    //get pixel y
     public int getY(MatOfPoint point) {
         Moments moment = Imgproc.moments(point);
         return (int) (moment.m01 / moment.m00);
@@ -352,18 +407,6 @@ public class MainActivity extends AppCompatActivity {
 
     //show color
     void showColor() throws NoSuchFieldException, IllegalAccessException {
-        String[][] test = new String[6][3];
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++)
-                test[i][j] = cube.L[i][j];
-        }
-
-        for (int i = 3; i < 6; i++) {
-            for (int j = 0; j < 3; j++) {
-                test[i][j] = cube.R[i - 3][j];
-            }
-        }
-
         for (int i = 0; i < 6; i++) {
             for (int j = 0; j < 3; j++) {
                 String index = "row" + i + "col" + j;
@@ -385,5 +428,15 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
+    }
+
+    //show time
+    String toTime(long time) {
+        long seconds = (long) time / 1000;
+        long second = seconds % 60;
+        long minutes = (long) seconds / 60;
+        long minute = minutes % 60;
+        long hour = (long) minutes / 60;
+        return hour + ":" + minute + ":" + second;
     }
 }

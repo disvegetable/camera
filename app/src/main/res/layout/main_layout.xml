@@ -30,33 +30,41 @@
         android:orientation="vertical"
         app:layout_constraintTop_toBottomOf="parent"
         app:layout_constraintLeft_toRightOf="@id/viewFinder"
-        android:background="@color/black"
+        android:background="@color/white"
         app:layout_constraintWidth_percent="0.2">
 
-        <TextView
-            android:id="@+id/test"
-            android:textColor="@color/white"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/moving"
-            android:textColor="@color/white"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            <Button
+                android:id="@+id/beginScramble"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="打乱魔方" />
+
+            <Button
+                android:id="@+id/beginRestore"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="复原魔方" />
+
+        </LinearLayout>
+
 
         <LinearLayout
             android:id="@+id/showCubeColor"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@color/black"
             android:orientation="vertical">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="@color/white"
-                android:text="color in up side:"
-                android:textSize="20sp" />
+                android:text="顶部颜色:" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -67,21 +75,18 @@
                     android:id="@+id/row0col0"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="20sp"
                     android:text="■" />
 
                 <TextView
                     android:id="@+id/row0col1"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="20sp"
                     android:text="■" />
 
                 <TextView
                     android:id="@+id/row0col2"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="20sp"
                     android:text="■" />
 
             </LinearLayout>
@@ -95,21 +100,18 @@
                     android:id="@+id/row1col0"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="20sp"
                     android:text="■" />
 
                 <TextView
                     android:id="@+id/row1col1"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="20sp"
                     android:text="■" />
 
                 <TextView
                     android:id="@+id/row1col2"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="20sp"
                     android:text="■" />
 
             </LinearLayout>
@@ -123,20 +125,17 @@
                     android:id="@+id/row2col0"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="20sp"
                     android:text="■" />
 
                 <TextView
                     android:id="@+id/row2col1"
                     android:layout_width="wrap_content"
-                    android:textSize="20sp"
                     android:layout_height="wrap_content"
                     android:text="■" />
 
                 <TextView
                     android:id="@+id/row2col2"
                     android:layout_width="wrap_content"
-                    android:textSize="20sp"
                     android:layout_height="wrap_content"
                     android:text="■" />
             </LinearLayout>
@@ -144,9 +143,8 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="color in front side:"
-                android:textColor="@color/white"
-                android:textSize="20sp" />
+                android:text="前面颜色:"
+                android:textColor="@color/white" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -157,21 +155,18 @@
                     android:id="@+id/row3col0"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="20sp"
                     android:text="■" />
 
                 <TextView
                     android:id="@+id/row3col1"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="20sp"
                     android:text="■" />
 
                 <TextView
                     android:id="@+id/row3col2"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="20sp"
                     android:text="■" />
 
             </LinearLayout>
@@ -185,21 +180,18 @@
                     android:id="@+id/row4col0"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="20sp"
                     android:text="■" />
 
                 <TextView
                     android:id="@+id/row4col1"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="20sp"
                     android:text="■" />
 
                 <TextView
                     android:id="@+id/row4col2"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="20sp"
                     android:text="■" />
             </LinearLayout>
 
@@ -212,21 +204,18 @@
                     android:id="@+id/row5col0"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="20sp"
                     android:text="■" />
 
                 <TextView
                     android:id="@+id/row5col1"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="20sp"
                     android:text="■" />
 
                 <TextView
                     android:id="@+id/row5col2"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="20sp"
                     android:text="■" />
 
             </LinearLayout>
@@ -234,11 +223,19 @@
         </LinearLayout>
 
         <TextView
-            android:id="@+id/showMoving"
+            android:id="@+id/cubeStatus"
+            android:textStyle="bold"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="20sp"
-            android:textColor="@color/white" />
+            android:textSize="20sp" />
+
+        <TextView
+            android:id="@+id/showTime"
+            android:textStyle="bold"
+            android:textSize="22sp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/black" />
 
     </LinearLayout>
 

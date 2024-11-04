@@ -1,5 +1,9 @@
 package com.example.opencv_app;
 
+import android.text.style.UpdateAppearance;
+
+import kotlin._Assertions;
+
 public class MyCube {
     String[][] F = new String[3][3];
     String[][] U = new String[3][3];
@@ -21,6 +25,22 @@ public class MyCube {
         }
     }
 
+    //judge whether cube is restored or not
+    public boolean isRestored() {
+        boolean result = true;
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                if (!F[i][j].equals("g") || !U[i][j].equals("w") || !D[i][j].equals("y")
+                        || !L[i][j].equals("o") || !R[i][j].equals("r") || !B[i][j].equals("b")) {
+                    result = false;
+                    break;
+                }
+            }
+        }
+        return result;
+    }
+
+    //judge moving and update cube
     public String resultMoving(String[][] Status) {
         if (is_U_inv(Status)) {
             updateCube("U'");
@@ -58,11 +78,30 @@ public class MyCube {
         } else if (is_D_inv(Status)) {
             updateCube("D'");
             return "D'";
+        } else if (is_ML(Status)) {
+            updateCube("ML");
+            return "ML";
+        } else if (is_ML_inv(Status)) {
+            updateCube("ML'");
+            return "ML'";
+        } else if (is_MU(Status)) {
+            updateCube("MU");
+            return "MU";
+        } else if (is_MU_inv(Status)) {
+            updateCube("MU'");
+            return "MU'";
+        } else if (is_MF(Status)) {
+            updateCube("MF");
+            return "MF";
+        } else if (is_MF_inv(Status)) {
+            updateCube("MF'");
+            return "MF'";
         } else {
             return "unstable";
         }
     }
 
+    //update cube
     private void updateCube(String Order) {
         //U
         if (Order.equals("U")) {
@@ -223,7 +262,7 @@ public class MyCube {
             }
         }
         //B'
-        else {
+        else if (Order.equals("B'")) {
             rotate_inv(B);
             String[] temp = new String[3];
             for (int i = 0; i < 3; i++) {
@@ -236,8 +275,85 @@ public class MyCube {
                 L[0][2 - i] = temp[i];
             }
         }
+        //ML
+        else if (Order.equals("ML")) {
+            String[] temp = new String[3];
+            for (int i = 0; i < 3; i++) {
+                temp[i] = F[i][1];
+            }
+            for (int i = 0; i < 3; i++) {
+                F[i][1] = U[i][1];
+                U[i][1] = B[i][1];
+                B[i][1] = D[i][1];
+                D[i][1] = temp[i];
+            }
+        }
+        //ML'
+        else if (Order.equals("ML'")) {
+            String[] temp = new String[3];
+            for (int i = 0; i < 3; i++) {
+                temp[i] = F[i][1];
+            }
+            for (int i = 0; i < 3; i++) {
+                F[i][1] = D[i][1];
+                D[i][1] = B[i][1];
+                B[i][1] = U[i][1];
+                U[i][1] = temp[i];
+            }
+        }
+        //MU
+        else if (Order.equals("MU")) {
+            String[] temp = new String[3];
+            for (int i = 0; i < 3; i++) {
+                temp[i] = F[1][i];
+            }
+            for (int i = 0; i < 3; i++) {
+                F[1][i] = R[2 - i][1];
+                R[2 - i][1] = B[1][2 - i];
+                B[1][2 - i] = L[i][1];
+                L[i][1] = temp[i];
+            }
+        }
+        //MU'
+        else if (Order.equals("MU'")) {
+            String[] temp = new String[3];
+            for (int i = 0; i < 3; i++) {
+                temp[i] = F[1][i];
+            }
+            for (int i = 0; i < 3; i++) {
+                F[1][i] = L[i][1];
+                L[i][1] = B[1][2 - i];
+                B[1][2 - i] = R[2 - i][1];
+                R[2 - i][1] = temp[i];
+            }
+        }
+        //MF
+        else if (Order.equals("MF")) {
+            String[] temp = new String[3];
+            for (int i = 0; i < 3; i++) {
+                temp[i] = U[1][i];
+            }
+            for (int i = 0; i < 3; i++) {
+                U[1][i] = L[1][i];
+                L[1][i] = D[1][2 - i];
+                D[1][2 - i] = R[1][i];
+                R[1][i] = temp[i];
+            }
+        }
+        //MF'
+        else {
+            String[] temp = new String[3];
+            for (int i = 0; i < 3; i++) {
+                temp[i] = U[1][i];
+            }
+            for (int i = 0; i < 3; i++) {
+                U[1][i] = R[1][i];
+                R[1][i] = D[1][2 - i];
+                D[1][2 - i] = L[1][i];
+                L[1][i] = temp[i];
+            }
+        }
     }
-
 
     //judge moving
     private boolean is_U_inv(String[][] Status) {
@@ -424,6 +540,73 @@ public class MyCube {
         return rightLine;
     }
 
+    private boolean is_ML(String[][] Status) {
+        boolean midLine = true;
+        for (int i = 0; i < 3; i++) {
+            if (!Status[i][1].equals(B[i][1]) || !Status[3 + i][1].equals(U[i][1])) {
+                midLine = false;
+                break;
+            }
+        }
+        return midLine;
+    }
+
+    private boolean is_ML_inv(String[][] Status) {
+        boolean midLine = true;
+        for (int i = 0; i < 3; i++) {
+            if (!Status[i][1].equals(F[i][1]) || !Status[3 + i][1].equals(D[i][1])) {
+                midLine = false;
+                break;
+            }
+        }
+        return midLine;
+    }
+
+    private boolean is_MU(String[][] Status) {
+        boolean midLine = true;
+        for (int i = 0; i < 3; i++) {
+            if (!Status[4][i].equals(R[2 - i][1])) {
+                midLine = false;
+                break;
+            }
+        }
+        return midLine;
+    }
+
+    private boolean is_MU_inv(String[][] Status) {
+        boolean midLine = true;
+        for (int i = 0; i < 3; i++) {
+            if (!Status[4][i].equals(L[i][1])) {
+                midLine = false;
+                break;
+            }
+        }
+        return midLine;
+    }
+
+    private boolean is_MF(String[][] Status) {
+        boolean midLine = true;
+        for (int i = 0; i < 3; i++) {
+            if (!Status[1][i].equals(L[1][i])) {
+                midLine = false;
+                break;
+            }
+        }
+        return midLine;
+    }
+
+    private boolean is_MF_inv(String[][] Status) {
+        boolean midLine = true;
+        for (int i = 0; i < 3; i++) {
+            if (!Status[1][i].equals(R[1][i])) {
+                midLine = false;
+                break;
+            }
+        }
+        return midLine;
+    }
+
+    //rotate face
     private void rotate(String[][] face) {
         String[][] temp = new String[3][3];
         for (int i = 0; i < 3; i++) {
